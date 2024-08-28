@@ -1,9 +1,9 @@
 Todo:
 Wireworld Cellular Automata Algorithm
 
-A Wireworld cell can be in one of four different states: Empty , Electron head (), Electron tail , and Connector
+A Wireworld cell can be in one of four different states: Empty , Electron head, Electron tail , and Connector
 
-As in all cellular automate, time proceeds in discrete steps called generations. Cells behave as follows:
+As in all cellular automata, time proceeds in discrete steps called generations. Cells behave as follows:
 
     Empty → Empty
     Electron head → Electron tail

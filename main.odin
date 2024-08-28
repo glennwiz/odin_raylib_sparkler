@@ -3,8 +3,8 @@ package rayThing
 import "core:fmt"
 import "core:time"
 import "core:math"
-import rand "core:math/rand"
 import "core:os"
+import rand "core:math/rand"
 import rl "vendor:raylib"
 
 WINDOW_SIZE :: 1000
@@ -19,7 +19,7 @@ eater: VEC2_LOCATION;
 CellType :: enum u8 {
     EMPTY,
     ELECTRON_HEAD,
-    ELECRON_TAIL,
+    ELECTRON_TAIL,
     CONDUCTOR,
 }
 
@@ -28,6 +28,11 @@ Cell :: struct {
     value: int
 }
 
+is_drawing := false
+is_erasing := false
+is_updating := false
+speed := 60
+last_draw_pos: VEC2_LOCATION
 
 main :: proc(){
     fmt.println("Hello, World!")
@@ -41,23 +46,23 @@ main :: proc(){
 
     initialize_grid(&grid)
    
+    counter := 0
     for !rl.WindowShouldClose(){       
 
-        if rl.IsMouseButtonPressed(.LEFT) {
-            fmt.println("Left Mouse button pressed")
-
-            mouse_pos := rl.GetMousePosition()
-            x := int(mouse_pos.x) / CELL_SIZE
-            y := int(mouse_pos.y) / CELL_SIZE
-
-            fmt.printf("Mouse position: %d, %d\n", x, y)
-            place_conductor(&grid)
+        if rl.IsKeyPressed(.SPACE) {
+            is_updating = !is_updating
         }
-        if rl.IsMouseButtonPressed(.RIGHT) {
-            fmt.println("Right Mouse button pressed")
-            place_electron(&grid)
-        }
+       
+        update_input(&grid)        
 
+        counter += 1;
+        //check counter against modulus 0
+        if(is_updating == true && counter % speed == 0)
+        {
+        
+            update_grid(&grid)
+        }
+        
         //fmt docs odin/core/fmt/docs.odin
         //fmt.printf("Grid memory address: %p\n", &grid)
 
@@ -83,9 +88,10 @@ main :: proc(){
                     color = rl.YELLOW
                 } else if cell.cell_type == .ELECTRON_HEAD {
                     color = rl.BLUE
-                } else if cell.cell_type == .ELECRON_TAIL {
+                } else if cell.cell_type == .ELECTRON_TAIL {
                     color = rl.RED
                 }
+
 
                 if(color != rl.WHITE)
                 {
@@ -123,7 +129,148 @@ initialize_grid :: proc(grid: ^[][GRID_WIDTH]Cell) {
     for x in GRID_WIDTH/4..=(3*GRID_WIDTH)/4 {
         grid[mid_y][x].cell_type = .CONDUCTOR
     }
-    grid[mid_y][GRID_WIDTH/4].cell_type = .ELECTRON_HEAD
+
+    for x in GRID_WIDTH/2..=(3*GRID_WIDTH)/4 {
+        grid[mid_y][x].cell_type = .CONDUCTOR
+    }
+    grid[mid_y][GRID_WIDTH/2].cell_type = .ELECTRON_HEAD
+}
+
+update_input :: proc(grid: ^[][GRID_WIDTH]Cell) {
+    mouse_pos := rl.GetMousePosition()
+    x := int(mouse_pos.x) / CELL_SIZE
+    y := int(mouse_pos.y) / CELL_SIZE
+
+    if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
+        current_pos := VEC2_LOCATION{x, y}
+
+        if rl.IsMouseButtonDown(.LEFT) {
+            if !is_drawing {
+                is_drawing = true
+                is_erasing = false
+                last_draw_pos = current_pos
+            }
+            draw_line(grid, last_draw_pos, current_pos, .CONDUCTOR)
+            last_draw_pos = current_pos
+        } else if rl.IsMouseButtonReleased(.LEFT) {
+            is_drawing = false
+        }
+
+        if rl.IsMouseButtonDown(.RIGHT) {
+            if !is_erasing {
+                is_erasing = true
+                is_drawing = false
+                last_draw_pos = current_pos
+            }
+            draw_line(grid, last_draw_pos, current_pos, .EMPTY)
+            last_draw_pos = current_pos
+        } else if rl.IsMouseButtonReleased(.RIGHT) {
+            is_erasing = false
+        }
+
+        if rl.IsMouseButtonPressed(.MIDDLE) {
+            place_electron(grid)
+        }
+    }
+
+    if rl.IsKeyPressed(.SPACE) {
+        update_grid(grid)
+    }
+
+    if rl.IsKeyPressed(.PERIOD){
+        if speed > 10 {
+            speed -= 10
+        }        
+    }
+
+    if rl.IsKeyPressed(.COMMA){
+        if speed < 100 {
+            speed += 10
+        }
+    }
+
+
+}
+
+draw_line :: proc(grid: ^[][GRID_WIDTH]Cell, start, end: VEC2_LOCATION, cell_type: CellType) {
+    dx := abs(end.x - start.x)
+    dy := -abs(end.y - start.y)
+    sx := start.x < end.x ? 1 : -1
+    sy := start.y < end.y ? 1 : -1
+    err := dx + dy
+
+    x, y := start.x, start.y
+
+    for {
+        if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
+            grid[y][x].cell_type = cell_type
+        }
+
+        if x == end.x && y == end.y do break
+
+        e2 := 2 * err
+        if e2 >= dy {
+            err += dy
+            x += sx
+        }
+        if e2 <= dx {
+            err += dx
+            y += sy
+        }
+    }
+}
+
+
+update_grid :: proc(grid: ^[][GRID_WIDTH]Cell) {
+    new_grid := make([][GRID_WIDTH]Cell, GRID_HEIGHT)
+    defer delete(new_grid)
+
+    for y in 0..<GRID_HEIGHT {
+        for x in 0..<GRID_WIDTH {
+
+            c := grid[y][x]
+
+            switch c.cell_type {
+            case .EMPTY:
+                new_grid[y][x].cell_type = .EMPTY
+                new_grid[y][x].value = c.value
+            case .ELECTRON_HEAD:
+                new_grid[y][x].cell_type = .ELECTRON_TAIL
+            case .ELECTRON_TAIL:
+                new_grid[y][x].cell_type = .CONDUCTOR
+            case .CONDUCTOR:
+                count := count_electron_heads(grid^, x, y)
+                //creating new heads
+                new_grid[y][x].cell_type = count == 1 || count == 2 ? .ELECTRON_HEAD : .CONDUCTOR
+            }
+        }
+    }
+
+    for y in 0..<GRID_HEIGHT {
+        for x in 0..<GRID_WIDTH {
+            grid[y][x] = new_grid[y][x]
+        }
+    }
+}
+
+count_electron_heads :: proc(grid: [][GRID_WIDTH]Cell, x, y: int) -> int {
+    //we look at the number of electron heads around the cell
+    //we are looking at the 8 cells around the cell
+    //we are not looking at the cell itself  
+    
+    //if 1 or 2 electron heads are around the cell we will create a new electron head
+
+    count := 0
+    for dy in -1..=1 {
+        for dx in -1..=1 {
+            if dx == 0 && dy == 0 do continue
+            nx, ny := x + dx, y + dy
+            if nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT {
+                if grid[ny][nx].cell_type == .ELECTRON_HEAD do count += 1
+            }
+        }
+    }
+    return count
 }
 
 update_flame :: proc(grid: [][GRID_WIDTH]Cell) {    
