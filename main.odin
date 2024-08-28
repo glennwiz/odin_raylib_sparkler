@@ -16,12 +16,18 @@ CELL_SIZE :: WINDOW_SIZE / GRID_WIDTH
 
 eater: VEC2_LOCATION;
 
-Cell :: enum u8 {
+CellType :: enum u8 {
     EMPTY,
     ELECTRON_HEAD,
     ELECRON_TAIL,
     CONDUCTOR,
 }
+
+Cell :: struct {
+    cell_type: CellType,
+    value: int
+}
+
 
 main :: proc(){
     fmt.println("Hello, World!")
@@ -30,16 +36,26 @@ main :: proc(){
     rl.InitWindow(WINDOW_SIZE, WINDOW_SIZE, "2D Flame");
     rl.SetTargetFPS(60);
 
-    grid := make([][GRID_WIDTH]int, GRID_HEIGHT)
+    grid := make([][GRID_WIDTH]Cell, GRID_HEIGHT)
     defer delete(grid)
+
+    initialize_grid(&grid)
    
     for !rl.WindowShouldClose(){       
 
         if rl.IsMouseButtonPressed(.LEFT) {
             fmt.println("Left Mouse button pressed")
+
+            mouse_pos := rl.GetMousePosition()
+            x := int(mouse_pos.x) / CELL_SIZE
+            y := int(mouse_pos.y) / CELL_SIZE
+
+            fmt.printf("Mouse position: %d, %d\n", x, y)
+            place_conductor(&grid)
         }
         if rl.IsMouseButtonPressed(.RIGHT) {
             fmt.println("Right Mouse button pressed")
+            place_electron(&grid)
         }
 
         //fmt docs odin/core/fmt/docs.odin
@@ -57,6 +73,32 @@ main :: proc(){
         draw_flame(grid);
 
 
+        //Draw the grid
+        for y in 0..<GRID_HEIGHT {
+            for x in 0..<GRID_WIDTH {
+                cell := grid[y][x]
+                color := rl.WHITE
+
+                if cell.cell_type == .CONDUCTOR {
+                    color = rl.YELLOW
+                } else if cell.cell_type == .ELECTRON_HEAD {
+                    color = rl.BLUE
+                } else if cell.cell_type == .ELECRON_TAIL {
+                    color = rl.RED
+                }
+
+                if(color != rl.WHITE)
+                {
+                    rl.DrawRectangle(
+                        i32(x * CELL_SIZE), 
+                        i32(y * CELL_SIZE), 
+                        i32(CELL_SIZE), 
+                        i32(CELL_SIZE), 
+                        color
+                    )
+                }
+            }
+        }
 
         //Flashing Cell at the center
         color := PickColor();        
@@ -69,7 +111,22 @@ main :: proc(){
     rl.CloseWindow();
 }
 
-update_flame :: proc(grid: [][GRID_WIDTH]int) {    
+initialize_grid :: proc(grid: ^[][GRID_WIDTH]Cell) {
+    for y in 0..<GRID_HEIGHT {
+        for x in 0..<GRID_WIDTH {
+            grid[y][x].cell_type = .EMPTY
+        }
+    }
+
+    // Create an initial pattern (a simple wire with an electron)
+    mid_y := GRID_HEIGHT / 2
+    for x in GRID_WIDTH/4..=(3*GRID_WIDTH)/4 {
+        grid[mid_y][x].cell_type = .CONDUCTOR
+    }
+    grid[mid_y][GRID_WIDTH/4].cell_type = .ELECTRON_HEAD
+}
+
+update_flame :: proc(grid: [][GRID_WIDTH]Cell) {    
 
     // x is the row, Under skjørtet
     // y is the column, Og så oppover
@@ -84,7 +141,7 @@ update_flame :: proc(grid: [][GRID_WIDTH]int) {
     
     // fill bottom row with random values    
     for x in 0..<GRID_WIDTH {
-        grid[GRID_HEIGHT-1][x] = rand.int_max(256)
+        grid[GRID_HEIGHT-1][x].value = rand.int_max(256)
     }     
 
     // Update cells
@@ -110,10 +167,10 @@ update_flame :: proc(grid: [][GRID_WIDTH]int) {
             */   
 
             new_value := (
-                grid[index][left] +
-                grid[index][x] +
-                grid[index][right] +
-                grid[index-1][x]
+                grid[index][left].value +
+                grid[index][x].value +
+                grid[index][right].value +
+                grid[index-1][x].value
             ) / 4
 
             if new_value > 0 {
@@ -121,18 +178,18 @@ update_flame :: proc(grid: [][GRID_WIDTH]int) {
             }     
 
                       
-            grid[index-1][x] = max(0, new_value - rand.int_max(3))
+            grid[index-1][x].value = max(0, new_value - rand.int_max(3))
         }
     }
 }
 
-draw_flame :: proc(grid: [][GRID_WIDTH]int) {
+draw_flame :: proc(grid: [][GRID_WIDTH]Cell) {
     for y in 0..<GRID_HEIGHT {
         for x in 0..<GRID_WIDTH {
-            value := grid[y][x]
+            cell := grid[y][x]
             
             //purple tones
-            color := rl.Color{u8(value), u8(value/2), u8(value), 255}
+            color := rl.Color{u8(cell.value), u8(cell.value/2), u8(cell.value), 255}
             rl.DrawRectangle(
                 i32(x * CELL_SIZE), 
                 i32(y * CELL_SIZE), 
@@ -150,5 +207,32 @@ PickColor :: proc() -> rl.Color {
         u8(rand.int_max(256)),
         u8(rand.int_max(256)),
         255,
+    }
+}
+
+place_conductor :: proc(grid: ^[][GRID_WIDTH]Cell) {
+    mouse_pos := rl.GetMousePosition()
+    x := int(mouse_pos.x) / CELL_SIZE
+    y := int(mouse_pos.y) / CELL_SIZE
+
+    fmt.printf("placing_conductor: %d, %d\n", x, y)
+
+    if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
+        grid[y][x].cell_type = .CONDUCTOR
+    }
+}
+
+place_electron :: proc(grid: ^[][GRID_WIDTH]Cell) {
+    mouse_pos := rl.GetMousePosition()
+    x := int(mouse_pos.x) / CELL_SIZE
+    y := int(mouse_pos.y) / CELL_SIZE
+
+    fmt.printf("placing_electron: %d, %d\n", x, y)
+
+    if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
+        if grid[y][x].cell_type == .CONDUCTOR {            
+
+            grid[y][x].cell_type = .ELECTRON_HEAD
+        }
     }
 }
