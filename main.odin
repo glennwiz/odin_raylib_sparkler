@@ -16,7 +16,12 @@ CELL_SIZE :: WINDOW_SIZE / GRID_WIDTH
 
 eater: VEC2_LOCATION;
 
-
+Cell :: enum u8 {
+    EMPTY,
+    ELECTRON_HEAD,
+    ELECRON_TAIL,
+    CONDUCTOR,
+}
 
 main :: proc(){
     fmt.println("Hello, World!")
@@ -30,8 +35,15 @@ main :: proc(){
    
     for !rl.WindowShouldClose(){       
 
+        if rl.IsMouseButtonPressed(.LEFT) {
+            fmt.println("Left Mouse button pressed")
+        }
+        if rl.IsMouseButtonPressed(.RIGHT) {
+            fmt.println("Right Mouse button pressed")
+        }
+
         //fmt docs odin/core/fmt/docs.odin
-        fmt.printf("Grid memory address: %p\n", &grid)
+        //fmt.printf("Grid memory address: %p\n", &grid)
 
         //we need to update the flame
         update_flame(grid);
