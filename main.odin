@@ -62,14 +62,13 @@ update_flame :: proc(grid: [][GRID_WIDTH]int) {
     // x is the row, Under skjørtet
     // y is the column, Og så oppover
 
-    // 5y    5
-    // 4y   4
-    // 3y  3
-    // 2y 2
-    // 1y1
-    // 0 xxxxxxxxx
-    //   123456789
-    
+    // y     5
+    // y    4
+    // y   3
+    // y  2
+    // y 1
+    // y0
+    //  xxxxxxxxx  
     
     // fill bottom row with random values    
     for x in 0..<GRID_WIDTH {
