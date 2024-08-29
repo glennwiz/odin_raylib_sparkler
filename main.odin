@@ -34,17 +34,32 @@ is_updating := false
 speed := 60
 last_draw_pos: VEC2_LOCATION
 
+playground :: proc(){
+    ddd : ^int //declare a pointer to an integer
+    iii := 369 //declare an integer
+    ddd = &iii //assign the address of iii to ddd
+
+    fmt.printf("ddd (address): %p\n", ddd) 
+    fmt.printf("ddd (value): %d\n", ddd^)
+
+    fmt.printf("iii (address): %p\n", &iii)
+    fmt.printf("iii (value): %d\n", iii)
+}
+
 main :: proc(){
-    fmt.println("Hello, World!")
+    fmt.println("Hello, World!") 
 
-
+    // Raylib setup
     rl.InitWindow(WINDOW_SIZE, WINDOW_SIZE, "2D Flame");
     rl.SetTargetFPS(60);
 
+    //playground
+    playground();
+    
     grid := make([][GRID_WIDTH]Cell, GRID_HEIGHT)
     defer delete(grid)
 
-    initialize_grid(&grid)
+    initialize_grid(grid)
    
     counter := 0
     for !rl.WindowShouldClose(){       
@@ -58,23 +73,16 @@ main :: proc(){
         counter += 1;
         //check counter against modulus 0
         if(is_updating == true && counter % speed == 0)
-        {
-        
+        {        
             update_grid(&grid)
         }
         
         //fmt docs odin/core/fmt/docs.odin
         //fmt.printf("Grid memory address: %p\n", &grid)
 
-        //we need to update the flame
-        update_flame(grid);
-
-
+        update_flame(&grid);
         rl.BeginDrawing();
-        rl.ClearBackground(rl.BLACK);
-        
-
-        //Draw the flame
+        rl.ClearBackground(rl.BLACK);    
         draw_flame(grid);
 
 
@@ -91,7 +99,6 @@ main :: proc(){
                 } else if cell.cell_type == .ELECTRON_TAIL {
                     color = rl.RED
                 }
-
 
                 if(color != rl.WHITE)
                 {
@@ -117,7 +124,7 @@ main :: proc(){
     rl.CloseWindow();
 }
 
-initialize_grid :: proc(grid: ^[][GRID_WIDTH]Cell) {
+initialize_grid :: proc(grid: [][GRID_WIDTH]Cell) {
     for y in 0..<GRID_HEIGHT {
         for x in 0..<GRID_WIDTH {
             grid[y][x].cell_type = .EMPTY
@@ -125,15 +132,24 @@ initialize_grid :: proc(grid: ^[][GRID_WIDTH]Cell) {
     }
 
     // Create an initial pattern (a simple wire with an electron)
+ 
+    //line top
+    mid_y_top_two := GRID_HEIGHT / 2 - 2
+    for x in GRID_WIDTH/4..=(3*GRID_WIDTH)/4 {
+        grid[mid_y_top_two][x].cell_type = .CONDUCTOR
+    }
+    //line bottom
     mid_y := GRID_HEIGHT / 2
     for x in GRID_WIDTH/4..=(3*GRID_WIDTH)/4 {
         grid[mid_y][x].cell_type = .CONDUCTOR
     }
-
-    for x in GRID_WIDTH/2..=(3*GRID_WIDTH)/4 {
-        grid[mid_y][x].cell_type = .CONDUCTOR
-    }
+   
+    //the starting electron
     grid[mid_y][GRID_WIDTH/2].cell_type = .ELECTRON_HEAD
+
+    //end caps
+    mid_y_end_caps := GRID_HEIGHT / 2 -1
+    grid[mid_y_end_caps][GRID_WIDTH/4 + 1].cell_type = .CONDUCTOR    
 }
 
 update_input :: proc(grid: ^[][GRID_WIDTH]Cell) {
@@ -188,8 +204,6 @@ update_input :: proc(grid: ^[][GRID_WIDTH]Cell) {
             speed += 10
         }
     }
-
-
 }
 
 draw_line :: proc(grid: ^[][GRID_WIDTH]Cell, start, end: VEC2_LOCATION, cell_type: CellType) {
@@ -258,8 +272,7 @@ count_electron_heads :: proc(grid: [][GRID_WIDTH]Cell, x, y: int) -> int {
     //we are looking at the 8 cells around the cell
     //we are not looking at the cell itself  
     
-    //if 1 or 2 electron heads are around the cell we will create a new electron head
-
+    //if 1 or 2 electron heads are around the cell, the cell will become a new electron head
     count := 0
     for dy in -1..=1 {
         for dx in -1..=1 {
@@ -273,7 +286,7 @@ count_electron_heads :: proc(grid: [][GRID_WIDTH]Cell, x, y: int) -> int {
     return count
 }
 
-update_flame :: proc(grid: [][GRID_WIDTH]Cell) {    
+update_flame :: proc(grid: ^[][GRID_WIDTH]Cell) {    
 
     // x is the row, Under skjørtet
     // y is the column, Og så oppover
@@ -288,17 +301,12 @@ update_flame :: proc(grid: [][GRID_WIDTH]Cell) {
     
     // fill bottom row with random values    
     for x in 0..<GRID_WIDTH {
-        grid[GRID_HEIGHT-1][x].value = rand.int_max(256)
-    }     
-
+        grid^[GRID_HEIGHT-1][x].value = rand.int_max(256)
+    }    
     // Update cells
     for y in 1..<GRID_HEIGHT {
         for x in 0..<GRID_WIDTH {
-            index := GRID_HEIGHT - y
-            left := max(x - 1, 0)
-            right := min(x + 1, GRID_WIDTH - 1)
-            
-            /* 
+             /* 
                Calculate new value with heat diffusion algorithm
                this is a kind of cellular automata
                we are updating the value of the cell based on the values of the cells around it
@@ -313,19 +321,18 @@ update_flame :: proc(grid: [][GRID_WIDTH]Cell) {
                     The cell below
             */   
 
+            index := GRID_HEIGHT - y
+            left := max(x - 1, 0)
+            right := min(x + 1, GRID_WIDTH - 1)
+
             new_value := (
-                grid[index][left].value +
-                grid[index][x].value +
-                grid[index][right].value +
-                grid[index-1][x].value
+                grid^[index][left].value +
+                grid^[index][x].value +
+                grid^[index][right].value +
+                grid^[index-1][x].value
             ) / 4
-
-            if new_value > 0 {
-                //fmt.printf("New value: %d\n", new_value)
-            }     
-
-                      
-            grid[index-1][x].value = max(0, new_value - rand.int_max(3))
+      
+            grid^[index-1][x].value = max(0, new_value - rand.int_max(3))
         }
     }
 }
