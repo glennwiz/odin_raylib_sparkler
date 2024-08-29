@@ -55,7 +55,7 @@ main :: proc(){
 
     //playground
     playground();
-    
+
     grid := make([][GRID_WIDTH]Cell, GRID_HEIGHT)
     defer delete(grid)
 
@@ -68,19 +68,19 @@ main :: proc(){
             is_updating = !is_updating
         }
        
-        update_input(&grid)        
+        update_input(grid)        
 
         counter += 1;
         //check counter against modulus 0
         if(is_updating == true && counter % speed == 0)
         {        
-            update_grid(&grid)
+            update_grid(grid)
         }
         
         //fmt docs odin/core/fmt/docs.odin
         //fmt.printf("Grid memory address: %p\n", &grid)
 
-        update_flame(&grid);
+        update_flame(grid);
         rl.BeginDrawing();
         rl.ClearBackground(rl.BLACK);    
         draw_flame(grid);
@@ -152,7 +152,7 @@ initialize_grid :: proc(grid: [][GRID_WIDTH]Cell) {
     grid[mid_y_end_caps][GRID_WIDTH/4 + 1].cell_type = .CONDUCTOR    
 }
 
-update_input :: proc(grid: ^[][GRID_WIDTH]Cell) {
+update_input :: proc(grid: [][GRID_WIDTH]Cell) {
     mouse_pos := rl.GetMousePosition()
     x := int(mouse_pos.x) / CELL_SIZE
     y := int(mouse_pos.y) / CELL_SIZE
@@ -206,7 +206,7 @@ update_input :: proc(grid: ^[][GRID_WIDTH]Cell) {
     }
 }
 
-draw_line :: proc(grid: ^[][GRID_WIDTH]Cell, start, end: VEC2_LOCATION, cell_type: CellType) {
+draw_line :: proc(grid: [][GRID_WIDTH]Cell, start, end: VEC2_LOCATION, cell_type: CellType) {
     dx := abs(end.x - start.x)
     dy := -abs(end.y - start.y)
     sx := start.x < end.x ? 1 : -1
@@ -235,7 +235,7 @@ draw_line :: proc(grid: ^[][GRID_WIDTH]Cell, start, end: VEC2_LOCATION, cell_typ
 }
 
 
-update_grid :: proc(grid: ^[][GRID_WIDTH]Cell) {
+update_grid :: proc(grid: [][GRID_WIDTH]Cell) {
     new_grid := make([][GRID_WIDTH]Cell, GRID_HEIGHT)
     defer delete(new_grid)
 
@@ -253,7 +253,7 @@ update_grid :: proc(grid: ^[][GRID_WIDTH]Cell) {
             case .ELECTRON_TAIL:
                 new_grid[y][x].cell_type = .CONDUCTOR
             case .CONDUCTOR:
-                count := count_electron_heads(grid^, x, y)
+                count := count_electron_heads(grid, x, y)
                 //creating new heads
                 new_grid[y][x].cell_type = count == 1 || count == 2 ? .ELECTRON_HEAD : .CONDUCTOR
             }
@@ -273,6 +273,13 @@ count_electron_heads :: proc(grid: [][GRID_WIDTH]Cell, x, y: int) -> int {
     //we are not looking at the cell itself  
     
     //if 1 or 2 electron heads are around the cell, the cell will become a new electron head
+
+    //find closest cell that is an electron head
+    centerX := GRID_WIDTH / 2
+    centerY := GRID_HEIGHT / 2
+
+    fmt.printf("centerX: %d, centerY: %d\n", centerX, centerY)
+
     count := 0
     for dy in -1..=1 {
         for dx in -1..=1 {
@@ -286,7 +293,7 @@ count_electron_heads :: proc(grid: [][GRID_WIDTH]Cell, x, y: int) -> int {
     return count
 }
 
-update_flame :: proc(grid: ^[][GRID_WIDTH]Cell) {    
+update_flame :: proc(grid: [][GRID_WIDTH]Cell) {    
 
     // x is the row, Under skjørtet
     // y is the column, Og så oppover
@@ -301,7 +308,7 @@ update_flame :: proc(grid: ^[][GRID_WIDTH]Cell) {
     
     // fill bottom row with random values    
     for x in 0..<GRID_WIDTH {
-        grid^[GRID_HEIGHT-1][x].value = rand.int_max(256)
+        grid[GRID_HEIGHT-1][x].value = rand.int_max(256)
     }    
     // Update cells
     for y in 1..<GRID_HEIGHT {
@@ -326,13 +333,13 @@ update_flame :: proc(grid: ^[][GRID_WIDTH]Cell) {
             right := min(x + 1, GRID_WIDTH - 1)
 
             new_value := (
-                grid^[index][left].value +
-                grid^[index][x].value +
-                grid^[index][right].value +
-                grid^[index-1][x].value
+                grid[index][left].value +
+                grid[index][x].value +
+                grid[index][right].value +
+                grid[index-1][x].value
             ) / 4
       
-            grid^[index-1][x].value = max(0, new_value - rand.int_max(3))
+            grid[index-1][x].value = max(0, new_value - rand.int_max(3))
         }
     }
 }
@@ -376,7 +383,7 @@ place_conductor :: proc(grid: ^[][GRID_WIDTH]Cell) {
     }
 }
 
-place_electron :: proc(grid: ^[][GRID_WIDTH]Cell) {
+place_electron :: proc(grid: [][GRID_WIDTH]Cell) {
     mouse_pos := rl.GetMousePosition()
     x := int(mouse_pos.x) / CELL_SIZE
     y := int(mouse_pos.y) / CELL_SIZE
