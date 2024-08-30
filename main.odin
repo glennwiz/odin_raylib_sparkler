@@ -28,6 +28,10 @@ Cell :: struct {
     value: int
 }
 
+Point :: struct {
+    x, y: int
+}
+
 is_drawing := false
 is_erasing := false
 is_updating := false
@@ -68,7 +72,12 @@ main :: proc(){
             is_updating = !is_updating
         }
        
-        update_input(grid)        
+        update_input(grid)     
+
+
+        electron_heads := find_electron_heads(grid)
+        fmt.printf("Number of electron heads: %d\n", len(electron_heads))
+        defer delete(electron_heads)
 
         counter += 1;
         //check counter against modulus 0
@@ -123,6 +132,20 @@ main :: proc(){
 
     rl.CloseWindow();
 }
+
+find_electron_heads :: proc(grid: [][GRID_WIDTH]Cell) -> []Point {
+    electron_heads := make([dynamic]Point)
+   
+    for y in 0..<GRID_HEIGHT {
+        for x in 0..<GRID_WIDTH {
+            if grid[y][x].cell_type == .ELECTRON_HEAD {
+                append(&electron_heads, Point{x, y})
+            }
+        }
+    }
+
+    return electron_heads[:] //returning a slice shorthand for electron_heads[0:len(electron_heads)]
+} 
 
 initialize_grid :: proc(grid: [][GRID_WIDTH]Cell) {
     for y in 0..<GRID_HEIGHT {
@@ -279,6 +302,8 @@ count_electron_heads :: proc(grid: [][GRID_WIDTH]Cell, x, y: int) -> int {
     centerY := GRID_HEIGHT / 2
 
     fmt.printf("centerX: %d, centerY: %d\n", centerX, centerY)
+
+
 
     count := 0
     for dy in -1..=1 {
