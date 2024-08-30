@@ -144,7 +144,7 @@ find_electron_heads :: proc(grid: [][GRID_WIDTH]Cell) -> []Point {
         }
     }
 
-    return electron_heads[:] //returning a slice shorthand for electron_heads[0:len(electron_heads)]
+    return electron_heads[:] //returning a slice, shorthand for electron_heads[0:len(electron_heads)]
 } 
 
 initialize_grid :: proc(grid: [][GRID_WIDTH]Cell) {
@@ -154,8 +154,9 @@ initialize_grid :: proc(grid: [][GRID_WIDTH]Cell) {
         }
     }
 
-    // Create an initial pattern (a simple wire with an electron)
- 
+    // Create an initial pattern (a simple wire with an electron)    
+    // wireworld
+
     //line top
     mid_y_top_two := GRID_HEIGHT / 2 - 2
     for x in GRID_WIDTH/4..=(3*GRID_WIDTH)/4 {
