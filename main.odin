@@ -141,62 +141,61 @@ main :: proc(){
 }
 
 grow_conductor :: proc(grid: [][GRID_WIDTH]Cell) {
-    //find the end of the conductor
     for y in 0..<GRID_HEIGHT {
         for x in 0..<GRID_WIDTH {
             if grid[y][x].cell_type == .CONDUCTOR {
                 fmt.printf("Conductor found at: %d, %d\n", x, y)
                 
-                // count the number of conductor cells around the cell
-                left := x - 1
-                right := x + 1
-                up := y - 1
-                down := y + 1                
-
-                count := 0
-                i := 8 //number of cells around the cell
-
-                if grid[y][left].cell_type == .CONDUCTOR {
-                    count += 1
-                }
+                count := count_conductors(grid, x, y)
                 
-                if grid[y][right].cell_type == .CONDUCTOR {
-                    count += 1
+                if count == 1 && y > 0 && y < GRID_HEIGHT - 1 && grid[y-1][x].cell_type == .EMPTY {
+                    grow_new_conductor(grid, x, y)
                 }
-
-                if(y > 0){
-                    if grid[up][x].cell_type == .CONDUCTOR {
-                        count += 1
-                    }
-                }
-                    
-                if grid[down][x].cell_type == .CONDUCTOR {
-                    count += 1
-                }
-
-                //check if the cell above is empty
-                if y > 0 && grid[y-1][x].cell_type == .EMPTY  && count == 1  && y < GRID_HEIGHT - 1 {
-                    direction := rand.int_max(4)    
-
-                    
-                    random_number := rand.int_max(2)
-                    ramdom_number2 := rand.int_max(2)
-                    if(direction == 0){
-                        grid[y-1][x].cell_type = .CONDUCTOR
-                    } else if(direction == 1){
-                        grid[y-1][x+random_number].cell_type = .CONDUCTOR
-                    } else if(direction == 2){
-                        grid[y-1][x-random_number].cell_type = .CONDUCTOR
-                    } else if(direction == 3){
-                        grid[y-1][x+random_number].cell_type = .CONDUCTOR
-                        grid[y-1][x-random_number].cell_type = .CONDUCTOR
-                    }
-                    //grid[y-random_number][x-random_number].cell_type = .CONDUCTOR
-                }
-                count = 0
             }
-        }   
+        }
     }
+}
+
+count_conductors :: proc(grid: [][GRID_WIDTH]Cell, x, y: int) -> int {
+    count := 0
+    directions := [4][2]int{{0, -1}, {0, 1}, {-1, 0}, {1, 0}} // up, down, left, right
+    
+    for dir in directions {
+        nx, ny := x + dir[0], y + dir[1]
+        if is_valid_position(nx, ny) && grid[ny][nx].cell_type == .CONDUCTOR {
+            count += 1
+        }
+    }
+    
+    return count
+}
+
+grow_new_conductor :: proc(grid: [][GRID_WIDTH]Cell, x, y: int) {
+    direction := rand.int_max(4)
+    random_offset := rand.int_max(2)
+
+    switch direction {
+    case 0:
+        set_conductor(grid, x, y-1)
+    case 1:
+        set_conductor(grid, x+random_offset, y-1)
+    case 2:
+        set_conductor(grid, x-random_offset, y-1)
+    case 3:
+        set_conductor(grid, x+random_offset, y-1)
+        set_conductor(grid, x-random_offset, y-1)
+    }
+}
+
+set_conductor :: proc(grid: [][GRID_WIDTH]Cell, x, y: int) {
+    if is_valid_position(x, y) && grid[y][x].cell_type == .EMPTY {
+        grid[y][x].cell_type = .CONDUCTOR
+    }
+}
+
+// Check if a position is within the grid
+is_valid_position :: proc(x, y: int) -> bool {
+    return x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT
 }
 
 find_electron_heads :: proc(grid: [][GRID_WIDTH]Cell) -> []Point {
